@@ -81,15 +81,30 @@ struct GridCell {
 
     GridCell() : velocity(0), weight(0) {}
 
+    // Pack velocity with the X and Y components
     inline void velPack(short x, short y) 
         {
-        this->velocity = static_cast<long>(x) | (static_cast<long>(y) << 16);
+        this->velocity = (static_cast<long>(static_cast<unsigned short>(y)) << 16) 
+                       | (static_cast<unsigned short>(x));
         }
 
-    void operator=(GridCell other)
+    // Unpacks the X component.
+    inline short velX() const 
         {
-        this->weight = other.weight;
-        velPack((short)other.velocity, other.velocity >> 8);
+        return static_cast<short>(velocity & 0xFFFF);
+        }
+
+    // Unpacks the Y component.
+    inline short velY() const 
+        {
+        return static_cast<short>((velocity >> 16) & 0xFFFF);
+        }
+
+    GridCell& operator=(const GridCell& other) 
+        {
+        velocity = other.velocity;
+        weight = other.weight;
+        return *this;
         }
 };
 
@@ -109,11 +124,12 @@ struct Grid {
                 }
         }
 
-    void operator=(Grid other)
+    Grid& operator=(const Grid& other)
         {
         for (unsigned short i = 0; i < DIAMETER; ++i)
             for (unsigned short j = 0; j < DIAMETER; ++j)
-                this->cells[i][j] = other.cells[i][j];
+                cells[i][j] = other.cells[i][j];
+        return *this;
         }
 };
 
@@ -127,8 +143,8 @@ class FLIP
         void update();
 
     private:
-        short gravityInput[2];
-        short velocityInput[2];
+        long gravityInput; // bits 0-15 are x, 16-31 are y
+        long velocityInput; // bits 0-15 are x, 16-31 are y
         GravityProvider *gravityProvider;
         VelocityProvider *velocityProvider;
         Partical particles[PARTICLE_NUM];
