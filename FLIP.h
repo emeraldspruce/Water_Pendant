@@ -50,27 +50,58 @@ struct bitsState
 // Represents a particle in the simulation.
 struct Partical
     {
-    short position; // bits 0-7 are x, 7-15 are y
-    long velocity; // bits 0-15 are x, 16-31 are y
+    short position; // bits 0-7 are x, 8-15 are y
+    long velocity;  // bits 0-15 are x, 16-31 are y
 
-    Partical()
-        {
-        position = 0; 
-        velocity = 0;
-        }
-    
-    /**
-     * @param pos1 The x component of position
-     * @param pos2 The y component of position
-     * @param vel1 The x component of velocity
-     * @param vel2 The y component of velocity
-     */
+    Partical() : position(0), velocity(0) {}
+
     Partical(char pos1, char pos2, short vel1, short vel2)
         {
-        position = pos1 | (pos2 << 8);
-        velocity = vel1 | (vel2 << 16);
+        position = static_cast<unsigned char>(pos1) | (static_cast<unsigned short>(static_cast<unsigned char>(pos2)) << 8);
+        velocity = static_cast<unsigned short>(vel1) | (static_cast<unsigned long>(static_cast<unsigned short>(vel2)) << 16);
         }
+
+    inline void setPosX(char x)
+        {
+        position = (position & 0xFF00) | static_cast<unsigned char>(x);
+        }
+    
+    inline void setPosY(char y)
+        {
+        position = (position & 0x00FF) | (static_cast<unsigned short>(static_cast<unsigned char>(y)) << 8);
+        }
+
+    inline char getPosX() const
+        {
+        return static_cast<char>(position & 0xFF);
+        }
+    
+    inline char getPosY() const
+        {
+        return static_cast<char>((position >> 8) & 0xFF);
+        }   
+    
+    inline void setVelX(short vx)
+        {
+        velocity = (velocity & 0xFFFF0000) | static_cast<unsigned short>(vx);
+        }
+    
+    inline void setVelY(short vy)
+        {
+        velocity = (velocity & 0x0000FFFF) | (static_cast<unsigned long>(static_cast<unsigned short>(vy)) << 16);
+        }
+    
+    inline short getVelX() const
+        {
+        return static_cast<short>(velocity & 0xFFFF);
+        }
+    
+    inline short getVelY() const
+        {
+        return static_cast<short>((velocity >> 16) & 0xFFFF);
+        }     
     };
+
 
 
 
@@ -88,16 +119,24 @@ struct GridCell {
                        | (static_cast<unsigned short>(x));
         }
 
-    // Unpacks the X component.
-    inline short velX() const 
+    inline short getVelX() const 
         {
-        return static_cast<short>(velocity & 0xFFFF);
+        return static_cast<short>(velocity);
         }
 
-    // Unpacks the Y component.
-    inline short velY() const 
+    inline short getVelY() const 
         {
         return static_cast<short>((velocity >> 16) & 0xFFFF);
+        }
+
+    inline void setVelX(short x)
+        {
+        velocity = (velocity & 0xFFFF0000) | static_cast<unsigned short>(x);
+        }
+    
+    inline void setVelY(short y)
+        {
+        velocity = (velocity & 0x0000FFFF) | (static_cast<unsigned long>(static_cast<unsigned short>(y)) << 16);
         }
 
     GridCell& operator=(const GridCell& other) 
@@ -131,6 +170,11 @@ struct Grid {
                 cells[i][j] = other.cells[i][j];
         return *this;
         }
+
+    GridCell* operator[](const unsigned short index)
+        {
+        return cells[index];
+        }
 };
 
 
@@ -152,8 +196,6 @@ class FLIP
         void updateInputs();
         void updateVelocities();
         void updatePositions();
-
-        void addGravity();
-        void makeIncompressible();
-        void advect();
+        inline short getX(long packedValue);
+        inline short getY(long packedValue);
     };

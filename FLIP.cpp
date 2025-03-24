@@ -10,13 +10,9 @@
  */
 FLIP::FLIP(GravityProvider *gravityProvider, VelocityProvider *velocityProvider) : 
            gravityProvider(gravityProvider), 
-           velocityProvider(velocityProvider) 
-    {
-    gravityInput[0] = 0;
-    gravityInput[1] = 0;
-    velocityInput[0] = 0;
-    velocityInput[1] = 0;
-    }
+           velocityProvider(velocityProvider),
+           gravityInput(0),
+           velocityInput(0) {}
 
 
 
@@ -43,10 +39,8 @@ inline void FLIP::updateInputs()
     {
     long gravInput = gravityProvider->getGravity();
     long veloInput = velocityProvider->getVelocity();
-    gravityInput[0] = (gravInput & 0xFFFF);
-    gravityInput[1] = (gravInput >> 16);
-    velocityInput[0] = (veloInput & 0xFFFF);
-    velocityInput[1] = (veloInput >> 16);
+    gravityInput = gravInput;
+    velocityInput = veloInput;
     }
 
 
@@ -60,8 +54,8 @@ inline void FLIP::updateVelocities()
     for (unsigned long i = 0; i < PARTICLE_NUM; i++)
         {
         partical = &particles[i];
-        partical->velocity[0] += velocityInput[0] + gravityInput[0];
-        partical->velocity[1] += velocityInput[1] + gravityInput[1];
+        partical->setVelX(partical->getVelX() + getX(gravityInput));
+        partical->setVelY(partical->getVelY() + getY(gravityInput));
         }
     }
 
@@ -76,7 +70,35 @@ inline void FLIP::updatePositions()
     for (unsigned long i = 0; i < PARTICLE_NUM; i++)
         {
         partical = &particles[i];
-        partical->position[0] += partical->velocity[0];
-        partical->position[1] += partical->velocity[1];
+        partical->setPosX(partical->getPosX() + partical->getVelX());
+        partical->setPosY(partical->getPosY() + partical->getVelY());
         }
+    }
+
+
+
+/**
+ * @param packedValue The long storing the X component in the first 16 bits
+ * 
+ * @brief Unpacks the X component of the packedValue
+ * 
+ * @returns The X component of the packedValue
+ */
+inline short FLIP::getX(long packedValue)
+    {
+    return static_cast<short>(packedValue);
+    }
+
+
+
+/**
+ * @param packedValue The long storing the Y component in the last 16 bits
+ * 
+ * @brief Unpacks the Y component of the packedValue
+ * 
+ * @returns The Y component of the packedValue
+ */
+inline short FLIP::getY(long packedValue)
+    {
+    return static_cast<short>((packedValue >> 16) & 0xFFFF);
     }
