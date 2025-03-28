@@ -10,6 +10,17 @@
 #define SIZE_OF_BIT_STATE 6
 #define TIMESTEP 3.125e-8
 
+/**
+ * ISSUES:
+ * -Addition and multiplication
+ *     *Don't know where the fixed point is in fixed point arithmetic
+ *     *Update position and velocity encounter this problem
+ * -Need math functions for fixed point arithmetic
+ *     *addition
+ *     *multiplication
+ *     *multiplte different data types
+ */
+
 
 
 // Represents the return value of the simulator where the on/off state of each LED is stored.
@@ -210,13 +221,14 @@ class FLIP
         long velocityInput; // bits 0-15: x-component, bits 16-31: y-component
         GravityProvider *gravityProvider;
         VelocityProvider *velocityProvider;
+        Grid grid;
+        Grid copyGrid;
         Particle particles[PARTICLE_NUM];
 
-        void updateInputs();
-        void updateVelocities();
-        void updatePositions();
-        inline short getX(long packedValue);
-        inline short getY(long packedValue);
+        inline void updateInputs();
+        inline void updateVelocities();
+        inline void updatePositions();
+        inline void ParticleToGrid();
     };
 
 #endif // FLIP_SIMULATION_H

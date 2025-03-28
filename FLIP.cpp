@@ -12,7 +12,11 @@ FLIP::FLIP(GravityProvider *gravityProvider, VelocityProvider *velocityProvider)
            gravityProvider(gravityProvider), 
            velocityProvider(velocityProvider),
            gravityInput(0),
-           velocityInput(0) {}
+           velocityInput(0) 
+           {
+            grid.clear();
+            copyGrid.clear();
+           }
 
 
 
@@ -21,10 +25,7 @@ FLIP::FLIP(GravityProvider *gravityProvider, VelocityProvider *velocityProvider)
  */
 void FLIP::update()
     {
-    updateInputs();
-    updateVelocities();
-    updatePositions();
-
+    copyGrid = grid;
     }
 
 
@@ -51,8 +52,8 @@ inline void FLIP::updateVelocities()
     for (unsigned long i = 0; i < PARTICLE_NUM; i++)
         {
         partical = &particles[i];
-        partical->setVel(partical->getVelX() + getX(gravityInput), 
-                         partical->getVelY() + getY(gravityInput));
+        partical->setVel(partical->getVelX() + Math::getX(gravityInput), 
+                         partical->getVelY() + Math::getY(gravityInput));
         }
     }
 
@@ -70,4 +71,11 @@ inline void FLIP::updatePositions()
         partical->setPos(partical->getPosX() + partical->getVelX(), 
                          partical->getPosY() + partical->getVelY());
         }
+    }
+
+
+
+inline void FLIP::ParticleToGrid() 
+    {
+    
     }
