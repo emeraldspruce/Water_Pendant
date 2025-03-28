@@ -23,11 +23,8 @@ void FLIP::update()
     {
     updateInputs();
     updateVelocities();
-
-
-    // Do this last
     updatePositions();
-    // Partical positions to LED states
+
     }
 
 
@@ -50,12 +47,12 @@ inline void FLIP::updateInputs()
  */
 inline void FLIP::updateVelocities()
     {
-    Partical *partical = nullptr;
+    Particle *partical = nullptr;
     for (unsigned long i = 0; i < PARTICLE_NUM; i++)
         {
         partical = &particles[i];
-        partical->setVelX(partical->getVelX() + getX(gravityInput));
-        partical->setVelY(partical->getVelY() + getY(gravityInput));
+        partical->setVel(partical->getVelX() + getX(gravityInput), 
+                         partical->getVelY() + getY(gravityInput));
         }
     }
 
@@ -66,39 +63,11 @@ inline void FLIP::updateVelocities()
  */
 inline void FLIP::updatePositions()
     {
-    Partical *partical = nullptr;
+    Particle *partical = nullptr;
     for (unsigned long i = 0; i < PARTICLE_NUM; i++)
         {
         partical = &particles[i];
-        partical->setPosX(partical->getPosX() + partical->getVelX());
-        partical->setPosY(partical->getPosY() + partical->getVelY());
+        partical->setPos(partical->getPosX() + partical->getVelX(), 
+                         partical->getPosY() + partical->getVelY());
         }
-    }
-
-
-
-/**
- * @param packedValue The long storing the X component in the first 16 bits
- * 
- * @brief Unpacks the X component of the packedValue
- * 
- * @returns The X component of the packedValue
- */
-inline short FLIP::getX(long packedValue)
-    {
-    return static_cast<short>(packedValue);
-    }
-
-
-
-/**
- * @param packedValue The long storing the Y component in the last 16 bits
- * 
- * @brief Unpacks the Y component of the packedValue
- * 
- * @returns The Y component of the packedValue
- */
-inline short FLIP::getY(long packedValue)
-    {
-    return static_cast<short>((packedValue >> 16) & 0xFFFF);
     }

@@ -1,10 +1,14 @@
+#ifndef FLIP_SIMULATION_H
+#define FLIP_SIMULATION_H
+
 #include "Math.h"
-#include "Providers"
+#include "Providers.h"
 
 #define PARTICLE_NUM 75 // Water particles
 #define DIAMETER 15
 #define WATER_DENSITY 1000
 #define SIZE_OF_BIT_STATE 6
+#define TIMESTEP 3.125e-8
 
 
 
@@ -14,13 +18,13 @@ struct bitsState
     long bits[SIZE_OF_BIT_STATE]; // 6 * 32 = 192 bits max
 
     // Returns a 32 bit section of the state
-    long operator[](unsigned long index)
+    long operator[](unsigned long index) const
         {
         return bits[index];
         }
 
     // Updates the current bits to that of the other state 
-    void operator=(bitsState other)
+    void operator=(const bitsState& other)
         {
         for (unsigned long i = 0; i < SIZE_OF_BIT_STATE; i++)
             bits[i] = other.bits[i];
@@ -40,7 +44,7 @@ struct bitsState
         {
         bitsState newBits;
         for (unsigned long i = 0; i < SIZE_OF_BIT_STATE; i++) 
-            bits[i] = bits[i] | other[i];
+            newBits.bits[i] = bits[i] | other[i];
         return newBits;
         }
     };
@@ -48,14 +52,14 @@ struct bitsState
 
 
 // Represents a particle in the simulation.
-struct Partical
+struct Particle
     {
-    short position; // bits 0-7 are x, 8-15 are y
-    long velocity;  // bits 0-15 are x, 16-31 are y
+    short position; // bits 0-7: x-position, bits 8-15: y-position
+    long velocity;  // bits 0-15: x-velocity, bits 16-31: y-position
 
-    Partical() : position(0), velocity(0) {}
+    Particle() : position(0), velocity(0) {}
 
-    Partical(char pos1, char pos2, short vel1, short vel2)
+    Particle(char pos1, char pos2, short vel1, short vel2)
         {
         position = static_cast<unsigned char>(pos1) | (static_cast<unsigned short>(static_cast<unsigned char>(pos2)) << 8);
         velocity = static_cast<unsigned short>(vel1) | (static_cast<unsigned long>(static_cast<unsigned short>(vel2)) << 16);
@@ -69,6 +73,11 @@ struct Partical
     inline void setPosY(char y)
         {
         position = (position & 0x00FF) | (static_cast<unsigned short>(static_cast<unsigned char>(y)) << 8);
+        }
+
+    inline void setPos(char pos1, char pos2)
+        {
+        position = static_cast<unsigned char>(pos1) | (static_cast<unsigned short>(static_cast<unsigned char>(pos2)) << 8);
         }
 
     inline char getPosX() const
@@ -91,6 +100,11 @@ struct Partical
         velocity = (velocity & 0x0000FFFF) | (static_cast<unsigned long>(static_cast<unsigned short>(vy)) << 16);
         }
     
+    inline void setVel(short vel1, short vel2)
+        {
+        velocity = static_cast<unsigned short>(vel1) | (static_cast<unsigned long>(static_cast<unsigned short>(vel2)) << 16);
+        }
+
     inline short getVelX() const
         {
         return static_cast<short>(velocity & 0xFFFF);
@@ -104,10 +118,9 @@ struct Partical
 
 
 
-
 // Represents a single cell in the simulation grid.
 struct GridCell {
-    long velocity; // Velocity components (x, y)
+    long velocity; // bits 0-15: x-velocity, bits 16-31: y-position
     short weight;  // Weight for velocity normalization
 
     GridCell() : velocity(0), weight(0) {}
@@ -137,6 +150,11 @@ struct GridCell {
     inline void setVelY(short y)
         {
         velocity = (velocity & 0x0000FFFF) | (static_cast<unsigned long>(static_cast<unsigned short>(y)) << 16);
+        }
+
+    inline void setVel(short x, short y)
+        {
+        velocity = static_cast<unsigned short>(x) | (static_cast<unsigned long>(static_cast<unsigned short>(y)) << 16);
         }
 
     GridCell& operator=(const GridCell& other) 
@@ -171,6 +189,7 @@ struct Grid {
         return *this;
         }
 
+    // Returns a single row
     GridCell* operator[](const unsigned short index)
         {
         return cells[index];
@@ -187,11 +206,11 @@ class FLIP
         void update();
 
     private:
-        long gravityInput; // bits 0-15 are x, 16-31 are y
-        long velocityInput; // bits 0-15 are x, 16-31 are y
+        long gravityInput;  // bits 0-15: x-component, bits 16-31: y-component
+        long velocityInput; // bits 0-15: x-component, bits 16-31: y-component
         GravityProvider *gravityProvider;
         VelocityProvider *velocityProvider;
-        Partical particles[PARTICLE_NUM];
+        Particle particles[PARTICLE_NUM];
 
         void updateInputs();
         void updateVelocities();
@@ -199,3 +218,5 @@ class FLIP
         inline short getX(long packedValue);
         inline short getY(long packedValue);
     };
+
+#endif // FLIP_SIMULATION_H
