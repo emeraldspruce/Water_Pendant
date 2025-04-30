@@ -219,13 +219,11 @@ class FLIP
     private:
         long gravityInput;  // bits 0-15: x-component, bits 16-31: y-component
         long velocityInput; // bits 0-15: x-component, bits 16-31: y-component
-        GravityProvider *gravityProvider;
-        VelocityProvider *velocityProvider;
         Grid grid;
         Grid copyGrid;
         Particle particles[PARTICLE_NUM];
 
-        inline void updateInputs();
+        inline void updateInputs(long gravInput, long veloInput);
         inline void updateVelocities();
         inline void updatePositions();
         inline void ParticleToGrid();

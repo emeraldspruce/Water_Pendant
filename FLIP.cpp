@@ -13,10 +13,10 @@ FLIP::FLIP(GravityProvider *gravityProvider, VelocityProvider *velocityProvider)
            velocityProvider(velocityProvider),
            gravityInput(0),
            velocityInput(0) 
-           {
+            {
             grid.clear();
             copyGrid.clear();
-           }
+            }
 
 
 
@@ -31,12 +31,13 @@ void FLIP::update()
 
 
 /**
+ * @param gravInput The gravity vector to be used in the simulation.
+ * @param veloInput The velocity vector to be used in the simulation.
+ * 
  * @brief Updates the gravity and velocity vectors.
  */
-inline void FLIP::updateInputs()
+inline void FLIP::updateInputs(long gravInput, long veloInput)
     {
-    long gravInput = gravityProvider->getGravity();
-    long veloInput = velocityProvider->getVelocity();
     gravityInput = gravInput;
     velocityInput = veloInput;
     }
