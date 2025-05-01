@@ -73,7 +73,22 @@ bitsState SIM::step(float gravX, float gravY, float accelX, float accelY)
  */
 void SIM::initWalls()
     {
-    error
+    // center index and radius
+    constexpr float R   = DIAMETER / 2.0f;      // = 7.5
+    constexpr float R2  = R * R;                // = 56.25
+    const int       c   = DIAMETER / 2;         // = 7
+
+    for (int row = 0; row < DIAMETER; ++row)
+        for (int col = 0; col < DIAMETER; ++col) 
+            {
+            float dx = col - c;
+            float dy = row - c;
+            // outside the circle?
+            if ((dx*dx + dy*dy) > R2)
+                grid[row][col].weight = -1; // wall
+            else
+                grid[row][col].weight = 0;  // fluid cell
+            }
     }
 
 
@@ -145,13 +160,99 @@ void SIM::applyExternalForces()
  */
 void SIM::computeDivergence()
     {
-    error
+    // Compute the edges of the grid
+    for (long i = 5; i < 10; ++i)
+        {
+        float dudx = 0.0f;
+        float dvdy = 0.0f;
+
+
+        // Calculate the divergence for the western edge
+        GridCell& cellWest = grid[i][0];
+        // forward x-difference
+        dudx = grid[i][1].velocity[0] - 
+                       cellWest.velocity[0];
+        // centered y-difference
+        dvdy = 0.5f * ( grid[i + 1][0].velocity[1] -
+                        grid[i - 1][0].velocity[1] );
+        cellWest.divergence = dudx + dvdy;
+    
+
+        // Calculate the divergence for the eastern edge
+        GridCell& cellEast = grid[i][DIAMETER - 1];
+        // backward x-difference
+        dudx = cellEast.velocity[0] -
+               grid[i][DIAMETER - 2].velocity[0];
+        // centered y-difference
+        dvdy = 0.5f * ( grid[i + 1][DIAMETER - 1].velocity[1] -
+                        grid[i - 1][DIAMETER - 1].velocity[1] );
+        cellEast.divergence = dudx + dvdy;
+        
+  
+        // Calculate the divergence for the northern edge
+        GridCell& cellNorth = grid[0][i];
+        // centered x-difference
+        dudx = 0.5f * ( grid[0][i + 1].velocity[0] -
+                        grid[0][i - 1].velocity[0] );
+        // forward y-difference
+        dvdy = grid[1][i].velocity[1] -
+               cellNorth.velocity[1];
+        cellNorth.divergence = dudx + dvdy;
+  
+
+        // Calculate the divergence for the southern edge
+        GridCell& cellSouth = grid[DIAMETER - 1][i];
+        // centered x-difference
+        dudx = 0.5f * ( grid[DIAMETER - 1][i + 1].velocity[0] -
+                        grid[DIAMETER - 1][i - 1].velocity[0] );
+        // backward y-difference
+        dvdy = cellSouth.velocity[1] -
+               grid[DIAMETER - 2][i].velocity[1];
+        cellSouth.divergence = dudx + dvdy;
+        }
+
+        
+    // Compute the middle of the grid
+    for (int y = 1; y < DIAMETER - 1; ++y) 
+        {
+        GridCell* cellRowTop = grid[y - 1];
+        GridCell* cellRowCur = grid[y];
+        GridCell* cellRowBot = grid[y + 1];
+        for (int x = 1; x < DIAMETER - 1; ++x) 
+            {
+            GridCell& cell = cellRowCur[x];
+
+            // Skip walls
+            if (cell.weight < 0)
+                continue;
+
+            // fetch neighbors
+            float cellEast  = 0.0f;
+            float cellWest  = 0.0f;
+            float cellNorth = 0.0f;
+            float cellSouth = 0.0f;
+
+            GridCell* cellRowCur = grid[y];
+            cellEast  = cellRowCur[x + 1].velocity[0];
+            cellWest  = cellRowCur[x - 1].velocity[0];
+            cellNorth = cellRowTop[x].velocity[1];
+            cellSouth = cellRowBot[x].velocity[1];
+
+            // centered differences, Δx=Δy=1 so divide by 2
+            float dx = 0.5f * (cellEast - cellWest);
+            float dy = 0.5f * (cellNorth - cellSouth);
+
+            cell.divergence = 0.5f * ( cellEast - cellWest +
+                                       cellNorth - cellSouth );
+            }
+        }
     }
 
 
 
 /**
  * @brief Solve the pressure system to find p such that ∇²p = div
+ * Using Guass-Seidel method to compute the divergence
  */
 void SIM::solvePressure()
     {

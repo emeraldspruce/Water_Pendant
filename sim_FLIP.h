@@ -68,7 +68,7 @@ struct bitsState
 
 
 // Represents a particle in the simulation.
-struct Particle
+struct Particle // 16B
     {
     float position[2]; // 0: x-position, 1: y-position
     float velocity[2];  // 0: x-velocity, 1: y-position
@@ -133,11 +133,22 @@ struct Particle
 
 
 
+enum class CellType : unsigned char
+    {
+    FLUID = 0,
+    WALL  = 1
+    };
+
+
+
 // Represents a single cell in the simulation grid.
 // Each x and y position is determined by the location in the Grid
-struct GridCell {
+struct GridCell { // 20B
     float velocity[2]; // 0: x-velocity, 1: y-position
+    float divergence; // Divergence of the cell
+    float pressure; // Pressure of the cell
     short weight;  // Weight for velocity normalization
+    CellType type; // Type of cell (FLUID or WALL)
 
     GridCell() noexcept = default;
 
@@ -166,6 +177,9 @@ struct GridCell {
         velocity[0] = other.velocity[0];
         velocity[1] = other.velocity[1];
         weight = other.weight;
+        divergence = other.divergence;
+        pressure = other.pressure;
+        type = other.type;
         return *this;
         }
 };
