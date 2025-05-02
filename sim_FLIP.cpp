@@ -160,6 +160,32 @@ void SIM::applyExternalForces()
  */
 void SIM::computeDivergence()
     {
+    // Compute the middle of the grid
+    for (int y = 1; y < DIAMETER - 1; ++y) 
+        {
+        GridCell* cellRowTop = grid[y - 1];
+        GridCell* cellRowCur = grid[y];
+        GridCell* cellRowBot = grid[y + 1];
+        for (int x = 1; x < DIAMETER - 1; ++x) 
+            {
+            GridCell& cell = cellRowCur[x];
+
+            // Skip walls
+            if (cell.weight < 0)
+                continue;
+
+            // fetch neighbors
+            float cellEast  = cellRowCur[x + 1].velocity[0];
+            float cellWest  = cellRowCur[x - 1].velocity[0];
+            float cellNorth = cellRowTop[x].velocity[1];
+            float cellSouth = cellRowBot[x].velocity[1];
+
+            cell.divergence = 0.5f * ( cellEast - cellWest +
+                                       cellNorth - cellSouth );
+            }
+        }
+
+
     // Compute the edges of the grid
     for (long i = 5; i < 10; ++i)
         {
@@ -210,8 +236,60 @@ void SIM::computeDivergence()
                grid[DIAMETER - 2][i].velocity[1];
         cellSouth.divergence = dudx + dvdy;
         }
+    }
 
+
+
+/**
+ * @brief Solve the pressure system to find p such that ∇²p = div
+ * Using Guass-Seidel method to compute the divergence
+ * 
+ * @todo: TEST HOW MANY ITERATIONS ARE NEEDED ON AVERAGE.
+ *     - if we frequently break early keep the early break
+ *     - otherwise, remove the break check
+ */
+void SIM::solvePressure()
+    {
+    const int numIterations = DIAMETER;
+    const float threshold = 1e-5f;
+    
+    // For every iteration run through each cell in the grid
+    for (int iter = 0; iter < numIterations; ++iter)
+        {
+        float maxDelta = 0.0f;
+        for (int y = 1; y < DIAMETER - 1; ++y)
+            for (int x = 1; x < DIAMETER - 1; ++x) 
+                {
+                GridCell& cell = grid[y][x];
+                if (cell.weight < 0) continue;  // wall
         
+                // Skip neighbors that are walls (treat them as 0-pressure Dirichlet)
+                float pR = grid[y][x+1].weight >= 0 ? grid[y][x+1].pressure : 0.0f;
+                float pL = grid[y][x-1].weight >= 0 ? grid[y][x-1].pressure : 0.0f;
+                float pU = grid[y+1][x].weight >= 0 ? grid[y+1][x].pressure : 0.0f;
+                float pD = grid[y-1][x].weight >= 0 ? grid[y-1][x].pressure : 0.0f;
+        
+                float newP = 0.25f * (pR + pL + pU + pD - cell.divergence);
+                float delta = absf(newP - cell.pressure);
+
+                maxDelta = max2(maxDelta, delta);
+                cell.pressure = newP;
+
+                }
+        if (maxDelta < threshold) break;
+        }
+    }
+
+
+
+/**
+ * @brief Apply pressure gradient so that we avoid compression
+ *     - u_new = u_old – ∇p / density
+ */
+void SIM::applyPressureGradient()
+    {
+    const float invRho_dt = 1.0f / WATER_DENSITY * dt;
+
     // Compute the middle of the grid
     for (int y = 1; y < DIAMETER - 1; ++y) 
         {
@@ -227,50 +305,75 @@ void SIM::computeDivergence()
                 continue;
 
             // fetch neighbors
-            float cellEast  = 0.0f;
-            float cellWest  = 0.0f;
-            float cellNorth = 0.0f;
-            float cellSouth = 0.0f;
-
-            GridCell* cellRowCur = grid[y];
-            cellEast  = cellRowCur[x + 1].velocity[0];
-            cellWest  = cellRowCur[x - 1].velocity[0];
-            cellNorth = cellRowTop[x].velocity[1];
-            cellSouth = cellRowBot[x].velocity[1];
+            float cellEast  = cellRowCur[x + 1].pressure;
+            float cellWest  = cellRowCur[x - 1].pressure;
+            float cellNorth = cellRowTop[x].pressure;
+            float cellSouth = cellRowBot[x].pressure;
 
             // centered differences, Δx=Δy=1 so divide by 2
-            float dx = 0.5f * (cellEast - cellWest);
-            float dy = 0.5f * (cellNorth - cellSouth);
+            float gradX = 0.5f * (cellEast - cellWest);
+            float gradY = 0.5f * (cellSouth - cellNorth);
 
-            cell.divergence = 0.5f * ( cellEast - cellWest +
-                                       cellNorth - cellSouth );
+            cell.velocity[0] -= invRho_dt * gradX;
+            cell.velocity[1] -= invRho_dt * gradY;
             }
         }
-    }
 
 
-
-/**
- * @brief Solve the pressure system to find p such that ∇²p = div
- * Using Guass-Seidel method to compute the divergence
- */
-void SIM::solvePressure()
-    {
-    const int numIterations = DIAMETER;
-    float maxJacobiUpdate = 0;
-    float jacobiMinThreshold = 1e-5f;
-    error
-    }
+    // Compute the edges of the grid
+    for (long i = 5; i < 10; ++i)
+        {
+        float gradX = 0.0f;
+        float gradY = 0.0f;
 
 
+        // Calculate the velocity change for the western edge
+        GridCell& cellWest = grid[i][0];
+        // forward x-difference
+        gradX = grid[i][1].pressure - 
+                       cellWest.pressure;
+        // centered y-difference
+        gradY = 0.5f * ( grid[i + 1][0].pressure -
+                        grid[i - 1][0].pressure );
+        cellWest.velocity[0] -= invRho_dt * gradX;
+        cellWest.velocity[1] -= invRho_dt * gradY;
+    
 
-/**
- * @brief Apply pressure gradient so that we avoid compression
- *     - u_new = u_old – ∇p / density
- */
-void SIM::applyPressureGradient()
-    {
-    error
+        // Calculate the velocity change for the eastern edge
+        GridCell& cellEast = grid[i][DIAMETER - 1];
+        // backward x-difference
+        gradX = cellEast.pressure -
+               grid[i][DIAMETER - 2].pressure;
+        // centered y-difference
+        gradY = 0.5f * ( grid[i + 1][DIAMETER - 1].pressure -
+                        grid[i - 1][DIAMETER - 1].pressure );
+        cellEast.velocity[0] -= invRho_dt * gradX;
+        cellEast.velocity[1] -= invRho_dt * gradY;
+        
+  
+        // Calculate the velocity change for the northern edge
+        GridCell& cellNorth = grid[0][i];
+        // centered x-difference
+        gradX = 0.5f * ( grid[0][i + 1].pressure -
+                        grid[0][i - 1].pressure );
+        // forward y-difference
+        gradY = grid[1][i].pressure -
+               cellNorth.pressure;
+        cellNorth.velocity[0] -= invRho_dt * gradX;
+        cellNorth.velocity[1] -= invRho_dt * gradY;
+  
+
+        // Calculate the velocity change for the southern edge
+        GridCell& cellSouth = grid[DIAMETER - 1][i];
+        // centered x-difference
+        gradX = 0.5f * ( grid[DIAMETER - 1][i + 1].pressure -
+                        grid[DIAMETER - 1][i - 1].pressure );
+        // backward y-difference
+        gradY = cellSouth.pressure -
+               grid[DIAMETER - 2][i].pressure;
+        cellSouth.velocity[0] -= invRho_dt * gradX;
+        cellSouth.velocity[1] -= invRho_dt * gradY;
+        }
     }
 
 
@@ -322,7 +425,18 @@ Vec2<float> SIM::interpolateGridVelocity( Grid& grid, float x, float y ) const
  */
 void SIM::transferVelocityToParticles()
     {
-    error
+    for (int i = 0; i < PARTICLE_NUM; ++i) 
+        {
+        Particle& particle = particles[i];
+
+        // Sample new and old grid velocities
+        Vec2<float> uNew = interpolateGridVelocity(grid, particle.position[0], particle.position[1]);
+        Vec2<float> uOld = interpolateGridVelocity(copyGrid, particle.position[0], particle.position[1]);
+
+        // Apply FLIP delta
+        particle.velocity[0] += (uNew.x - uOld.x);
+        particle.velocity[1] += (uNew.y - uOld.y);
+        }
     }
 
 
@@ -332,7 +446,12 @@ void SIM::transferVelocityToParticles()
  */
 void SIM::advectParticles()
     {
-    error
+    for (int i = 0; i < PARTICLE_NUM; ++i) 
+        {
+        Particle& particle = particles[i];
+        particle.position[0] += particle.velocity[0] * dt;
+        particle.position[1] += particle.velocity[1] * dt;
+        }
     }
 
 

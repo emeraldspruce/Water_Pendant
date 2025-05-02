@@ -20,6 +20,10 @@ struct Vec2
     Vec2(T x, T y) noexcept : x(x), y(y) {}
     };
 
+// MAYBE NOT NEEDED. CHECK THE PRESSURE SOLVER   
+inline float absf(float v) noexcept { return v < 0 ? -v : v; }
+template<typename T>
+inline T max2(T a, T b) noexcept { return a > b ? a : b; }
 
 
 // Represents the return value of the simulator where the on/off state of each LED is stored.
