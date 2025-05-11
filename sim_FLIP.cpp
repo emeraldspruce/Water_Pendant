@@ -9,6 +9,7 @@ SIM::SIM()
     accelInput[0] = 0;
     accelInput[1] = 0;
     initWalls();
+    initParticles();
     }
 
 
@@ -38,10 +39,10 @@ void SIM::updateStepSize(float dt)
 bitsState SIM::step(float gravX, float gravY, float accelX, float accelY)
     {
     // 1) Update the inputs
-    gravityInput[0] = gravX;
-    gravityInput[1] = gravY;
-    accelInput[0] = accelX;
-    accelInput[1] = accelY;
+    gravityInput[0] = -gravX;
+    gravityInput[1] = -gravY;
+    accelInput[0] = -accelX;
+    accelInput[1] = -accelY;
 
     // 2) Clear current Grids
     grid.clear();
@@ -89,6 +90,24 @@ void SIM::initWalls()
             else
                 grid[row][col].weight = 0;  // fluid cell
             }
+    }
+
+
+
+/**
+ * @brief Constructs the particles so that they fill a rectangle in the middle of the face
+ */
+void SIM::initParticles()
+    {
+    short y = 0;
+    short x = 0;
+    for (unsigned short i = 0; i < PARTICLE_NUM; ++i)
+        {
+        y = 5 + (i / 15);
+        x = i % 15;
+
+        setParticlePosition(i, x, y);
+        }
     }
 
 
@@ -250,7 +269,7 @@ void SIM::computeDivergence()
  */
 void SIM::solvePressure()
     {
-    const int numIterations = DIAMETER;
+    const int numIterations = 10000;//DIAMETER;
     const float threshold = 1e-5f;
     
     // For every iteration run through each cell in the grid
@@ -264,10 +283,10 @@ void SIM::solvePressure()
                 if (cell.weight < 0) continue;  // wall
         
                 // Skip neighbors that are walls (treat them as 0-pressure Dirichlet)
-                float pR = grid[y][x+1].weight >= 0 ? grid[y][x+1].pressure : 0.0f;
-                float pL = grid[y][x-1].weight >= 0 ? grid[y][x-1].pressure : 0.0f;
-                float pU = grid[y+1][x].weight >= 0 ? grid[y+1][x].pressure : 0.0f;
-                float pD = grid[y-1][x].weight >= 0 ? grid[y-1][x].pressure : 0.0f;
+                float pR = (grid[y][x+1].weight >= 0) ? grid[y][x+1].pressure : 0.0f;
+                float pL = (grid[y][x-1].weight >= 0) ? grid[y][x-1].pressure : 0.0f;
+                float pU = (grid[y+1][x].weight >= 0) ? grid[y+1][x].pressure : 0.0f;
+                float pD = (grid[y-1][x].weight >= 0) ? grid[y-1][x].pressure : 0.0f;
         
                 float newP = 0.25f * (pR + pL + pU + pD - cell.divergence);
                 float delta = absf(newP - cell.pressure);
@@ -434,8 +453,8 @@ void SIM::transferVelocityToParticles()
         Vec2<float> uOld = interpolateGridVelocity(copyGrid, particle.position[0], particle.position[1]);
 
         // Apply FLIP delta
-        particle.velocity[0] += (uNew.x - uOld.x);
-        particle.velocity[1] += (uNew.y - uOld.y);
+        particle.velocity[0] += (uNew.x - uOld.x) * 0.99;
+        particle.velocity[1] += (uNew.y - uOld.y) * 0.99;
         }
     }
 
@@ -457,11 +476,69 @@ void SIM::advectParticles()
 
 
 /**
- * @brief Enforce the bounds of the particles to be within the grid
+ * @brief Enforce the bounds of the particles to be within the grid.
+ * If the particle is outside the grid clamp it and bounce it off the walls
  */
 void SIM::enforceParticleBounds()
     {
-    error
+    for (int i = 0; i < PARTICLE_NUM; ++i) 
+        {
+        auto& particle = particles[i];
+        // Clamp into [0, DIAMETER)
+        float posX = particle.position[0];
+        float posY = particle.position[1];
+        particle.position[0] = (posX < 0.0f) ? 0.0f : (posX > DIAMETER - 1e-6f) ? (DIAMETER - 1e-6f) : posX;
+        particle.position[1] = (posY < 0.0f) ? 0.0f : (posY > DIAMETER - 1e-6f) ? (DIAMETER - 1e-6f) : posY;
+        posX = particle.position[0];
+        posY = particle.position[1];
+
+        // Bounce off walls
+        GridCell& correspondingCell = grid[static_cast<int>(posY)][static_cast<int>(posX)];
+        if (particle.position[0] == 0.0f || particle.position[0] == DIAMETER - 1e-6f)
+            particle.velocity[0] *= -0.5f; 
+        if (particle.position[1] == 0.0f || particle.position[1] == DIAMETER - 1e-6f)
+            particle.velocity[1] *= -0.5f;
+        
+
+        if (correspondingCell.weight == -1)
+            {
+            constexpr float R   = DIAMETER / 2.0f;      // = 7.5
+            constexpr float R2  = R * R;                // = 56.25
+            constexpr int   c   = DIAMETER / 2;         // = 7
+            float dx = posX - c;
+            float dy = posY - c;
+
+            float X_incriment = 0.0f;
+            float Y_incriment = 0.0f;
+            
+            // Determine incriments
+            if (particle.position[0] < 7)
+                X_incriment = 0.25;
+            else
+                X_incriment = -0.25;
+
+            if (particle.position[1] < 7)
+                Y_incriment = 0.25;
+            else
+                Y_incriment = -0.25;
+
+            if (particle.velocity[0] > particle.velocity[1])
+                X_incriment *= 2;
+            else
+                Y_incriment *= 2;
+
+            while ((dx*dx + dy*dy) > R2)
+                {
+                posX += X_incriment;
+                posY += Y_incriment;
+                dx = posX - c;
+                dy = posY - c;
+                }
+
+            particle.position[0] = posX;
+            particle.position[1] = posY;
+            }
+        }
     }
 
 
@@ -472,5 +549,40 @@ void SIM::enforceParticleBounds()
  */
 bitsState SIM::particlesToBitState()
     {
-    error
+    bitsState returnState;
+    long posX = 0;
+    long posY = 0;
+    for (unsigned short i = 0; i < PARTICLE_NUM; i++)
+        {
+        Particle& particle = particles[i];
+        posX = static_cast<long>(particle.position[0]);
+        posY = static_cast<long>(particle.position[1]);
+
+        const LEDMapping& map = LEDMap[posY][posX];
+
+        returnState.bits[static_cast<long>(map.bitStateIndex)] |= map.bitStateOR;
+        }
+
+    return returnState;
+    }
+
+
+
+/**
+ * @param index The index of the particle to set
+ * @param x The x-coordinate of the particle
+ * @param y The y-coordinate of the particle
+ * 
+ * @brief Sets the position of a particle for debugging
+ */
+void SIM::setParticlePosition(int index, float x, float y)
+    {
+    if (index < 0 || index >= PARTICLE_NUM)
+        return;
+
+    Particle& particle = particles[index];
+    particle.setPosX(x);
+    particle.setPosY(y);
+    particle.setVelX(0);
+    particle.setVelY(0);
     }
