@@ -1,9 +1,0 @@
-
-all: test
-
-test: test.cpp sim_FLIP.cpp
-    g++ -std=c++17 -g -fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer test.cpp sim_FLIP.cpp -o test
-
-clean:
-    rm -f all
-

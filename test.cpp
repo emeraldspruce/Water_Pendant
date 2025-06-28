@@ -1,6 +1,17 @@
+#include <fstream>
 #include "sim_FLIP.h"
 #include <cstdlib>
 #include <iostream>
+
+
+
+// the data for a single step from the config file
+struct Config_step
+    {
+    bool stop = 0;
+    float accelX = 0;
+    float accelY = 0;
+    };
 
 
 
@@ -11,113 +22,141 @@ inline int getBit(const bitsState& state, int index)
 
 
 
-void printState(const bitsState& state, int i)
+void printState(std::ostream& out, const bitsState& state, int i)
     {
-    std::cout << "------------------------------\n";
-    std::cout << "State: " << i << "\n";
+    out << "------------------------------\n";
+    if (i >= 0) out << "State: " << i << "\n";
 
     unsigned long index = 0;
     unsigned long bound = 0;
     // Row 0
-    std::cout << "           ";
+    out << "           ";
     bound = index + 5;
     for (; index < bound; ++index)
-        std::cout << ((getBit(state, index)) ? "X" : "-") << " ";
-    std::cout << "          \n";
+        out << ((getBit(state, index)) ? "X" : "-") << " ";
+    out << "          \n";
 
     // Row 1
-    std::cout << "       ";
+    out << "       ";
     bound = index + 9;
     for (; index < bound; ++index)
-        std::cout << ((getBit(state, index)) ? "X" : "-") << " ";
-    std::cout << "      \n";
+        out << ((getBit(state, index)) ? "X" : "-") << " ";
+    out << "      \n";
 
     // Row 2
-    std::cout << "     ";
+    out << "     ";
     bound = index + 11;
     for (; index < bound; ++index)
-        std::cout << ((getBit(state, index)) ? "X" : "-") << " ";
-    std::cout << "    \n";
+        out << ((getBit(state, index)) ? "X" : "-") << " ";
+    out << "    \n";
 
     // Row 3
-    std::cout << "   ";
+    out << "   ";
     bound = index + 13;
     for (; index < bound; ++index)
-        std::cout << ((getBit(state, index)) ? "X" : "-") << " ";
-    std::cout << "  \n";
+        out << ((getBit(state, index)) ? "X" : "-") << " ";
+    out << "  \n";
 
     // Row 4
-    std::cout << "   ";
+    out << "   ";
     bound = index + 13;
     for (; index < bound; ++index)
-        std::cout << ((getBit(state, index)) ? "X" : "-") << " ";
-    std::cout << "  \n";
+        out << ((getBit(state, index)) ? "X" : "-") << " ";
+    out << "  \n";
 
     // Row 5
     bound = index + 15;
     for (; index < bound; ++index)
-        std::cout << " " << ((getBit(state, index)) ? "X" : "-");
-    std::cout << "\n";
+        out << " " << ((getBit(state, index)) ? "X" : "-");
+    out << "\n";
 
     // Row 6
     bound = index + 15;
     for (; index < bound; ++index)
-        std::cout << " " << ((getBit(state, index)) ? "X" : "-");
-    std::cout << "\n";
+        out << " " << ((getBit(state, index)) ? "X" : "-");
+    out << "\n";
 
     // Row 7
     bound = index + 15;
     for (; index < bound; ++index)
-        std::cout << " " << ((getBit(state, index)) ? "X" : "-");
-    std::cout << "\n";
+        out << " " << ((getBit(state, index)) ? "X" : "-");
+    out << "\n";
 
     // Row 8
     bound = index + 15;
     for (; index < bound; ++index)
-        std::cout << " " << ((getBit(state, index)) ? "X" : "-");
-    std::cout << "\n";
+        out << " " << ((getBit(state, index)) ? "X" : "-");
+    out << "\n";
 
     // Row 9
     bound = index + 15;
     for (; index < bound; ++index)
-        std::cout << " " << ((getBit(state, index)) ? "X" : "-");
-    std::cout << "\n";
+        out << " " << ((getBit(state, index)) ? "X" : "-");
+    out << "\n";
 
     // Row 10
-    std::cout << "   ";
+    out << "   ";
     bound = index + 13;
     for (; index < bound; ++index)
-        std::cout << ((getBit(state, index)) ? "X" : "-") << " ";
-    std::cout << "  \n";
+        out << ((getBit(state, index)) ? "X" : "-") << " ";
+    out << "  \n";
 
     // Row 11
-    std::cout << "   ";
+    out << "   ";
     bound = index + 13;
     for (; index < bound; ++index)
-        std::cout << ((getBit(state, index)) ? "X" : "-") << " ";
-    std::cout << "  \n";
+        out << ((getBit(state, index)) ? "X" : "-") << " ";
+    out << "  \n";
 
     // Row 12
-    std::cout << "     ";
+    out << "     ";
     bound = index + 11;
     for (; index < bound; ++index)
-        std::cout << ((getBit(state, index)) ? "X" : "-") << " ";
-    std::cout << "    \n";
+        out << ((getBit(state, index)) ? "X" : "-") << " ";
+    out << "    \n";
 
     // Row 13
-    std::cout << "       ";
+    out << "       ";
     bound = index + 9;
     for (; index < bound; ++index)
-        std::cout << ((getBit(state, index)) ? "X" : "-") << " ";
-    std::cout << "      \n";
+        out << ((getBit(state, index)) ? "X" : "-") << " ";
+    out << "      \n";
 
     // Row 14
-    std::cout << "           ";
+    out << "           ";
     bound = index + 5;
     for (; index < bound; ++index)
-        std::cout << ((getBit(state, index)) ? "X" : "-") << " ";
-    std::cout << "          \n";
-    std::cout << "------------------------------\n\n";
+        out << ((getBit(state, index)) ? "X" : "-") << " ";
+    out << "          \n";
+    out << "------------------------------\n\n";
+    }
+
+
+
+Config_step getConfigUpdate()
+    {
+    // Open the config file
+    Config_step config_step;
+    std::ifstream file("test_config.txt");
+    if (!file.is_open())
+        {
+        std::cerr << "Error opening config file.\n";
+        return config_step;
+        }
+    
+    // Read the config files
+    std::string line, value;
+    while (file >> line >> value)
+        {
+        if (line == "STOP:")
+            config_step.stop = (std::stoi(value) != 0);
+        else if (line == "ACCEL_X:")
+            config_step.accelX = std::stof(value);
+        else if (line == "ACCEL_Y:")
+            config_step.accelY = std::stof(value);
+        }
+
+    return config_step;
     }
 
 
@@ -125,28 +164,23 @@ void printState(const bitsState& state, int i)
 int main(int argc, char** argv)
     {
     SIM sim;
-    float timestep = TIMESTEP;
-    int seconds = 5;
-
-    if (argc >= 3)
-        {
-        seconds = std::atoi(argv[2]);
-        timestep = 1.0f / std::atoi(argv[1]);
-        sim.updateStepSize(static_cast<float>(timestep));
-        }
-    else if (argc == 2)
-        {
-        timestep = 1.0f / std::atoi(argv[1]);
-        sim.updateStepSize(static_cast<float>(timestep));
-        }
-
+    sim.updateStepSize(TIMESTEP);
     
-    const int iterations = seconds / timestep;
-    for (int i = 0; i < iterations; ++i)
+    bitsState state;
+    std::ofstream file("test_output.txt", std::ios::trunc);
+    while (true) 
         {
-        bitsState state = sim.step(0, -9.81, 0, 0);
-        // Print the state
-        printState(state, i);
+        Config_step config_step = getConfigUpdate();
+        if (config_step.stop)
+            {
+            std::cout << "Stopping simulation.\n";
+            break;
+            }
+        state = sim.step(config_step.accelX, config_step.accelY); // Add current velocity? (change from gravity to velocity because gravity is an acceleration)
+        file.seekp(0);
+        printState(file, state, -1);
+        file.flush();
         }
+    file.close();
+    std::cout << "Simulation finished.\n";
     }
-

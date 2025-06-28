@@ -9,7 +9,7 @@ static constexpr int PARTICLE_NUM      = 75;
 static constexpr int DIAMETER          = 15;
 static constexpr int WATER_DENSITY     = 1000;
 static constexpr int SIZE_OF_BIT_STATE = 6;
-static constexpr float TIMESTEP        = 3.125e-8;
+static constexpr float TIMESTEP        = 0.001f;
 
 
 
@@ -263,12 +263,11 @@ class SIM
     public:
         SIM();
         void updateStepSize(float dt);
-        bitsState step(float gravX, float gravY, float accelX, float accelY);
+        bitsState step(float accelX, float accelY);
         void setParticlePosition(int index, float x, float y);
 
     private:
         float dt = TIMESTEP;
-        float gravityInput[2];
         float accelInput[2];
         Grid grid;
         Grid copyGrid;

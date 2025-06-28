@@ -1,11 +1,10 @@
 #include "sim_FLIP.h"
+#include <cmath>
 
 
 
 SIM::SIM()
     {
-    gravityInput[0] = 0;
-    gravityInput[1] = -9.81;
     accelInput[0] = 0;
     accelInput[1] = 0;
     initWalls();
@@ -27,8 +26,6 @@ void SIM::updateStepSize(float dt)
 
 
 /**
- * @param gravX The x-component of the gravity vector
- * @param gravY The y-component of the gravity vector
  * @param accelX The x-component of the acceleration vector
  * @param accelY The y-component of the acceleration vector
  * 
@@ -36,11 +33,9 @@ void SIM::updateStepSize(float dt)
  * 
  * @return The current state of the simulation as a bit state
  */
-bitsState SIM::step(float gravX, float gravY, float accelX, float accelY)
+bitsState SIM::step(float accelX, float accelY)
     {
     // 1) Update the inputs
-    gravityInput[0] = -gravX;
-    gravityInput[1] = -gravY;
     accelInput[0] = -accelX;
     accelInput[1] = -accelY;
 
@@ -156,18 +151,18 @@ void SIM::normalizeGrid()
 
 
 /**
- * @brief Adds gravity (gyro) and acceleration to the GRID
+ * @brief Adds acceleration to the GRID
  */
 void SIM::applyExternalForces()
     {
-    for (unsigned short i = 0; i < DIAMETER; ++i)
-        for (unsigned short j = 0; j < DIAMETER; ++j)
+    for (unsigned short y = 0; y < DIAMETER; ++y)
+        for (unsigned short x = 0; x < DIAMETER; ++x)
             {
-            GridCell& cell = grid[i][j];
+            GridCell& cell = grid[y][x];
             if (cell.weight > 0) // Check if cell contains any particles (AND isn't a wall)
                 {
-                cell.setVelX(cell.getVelX() + dt * (gravityInput[0] + accelInput[0]));
-                cell.setVelY(cell.getVelY() + dt * (gravityInput[1] + accelInput[1]));
+                cell.setVelX(cell.getVelX() + dt * accelInput[0]);
+                cell.setVelY(cell.getVelY() + dt * accelInput[1]);
                 }
             }
     }
@@ -269,7 +264,7 @@ void SIM::computeDivergence()
  */
 void SIM::solvePressure()
     {
-    const int numIterations = 10000;//DIAMETER;
+    const int numIterations = DIAMETER; //DIAMETER;
     const float threshold = 1e-5f;
     
     // For every iteration run through each cell in the grid
@@ -453,8 +448,8 @@ void SIM::transferVelocityToParticles()
         Vec2<float> uOld = interpolateGridVelocity(copyGrid, particle.position[0], particle.position[1]);
 
         // Apply FLIP delta
-        particle.velocity[0] += (uNew.x - uOld.x) * 0.99;
-        particle.velocity[1] += (uNew.y - uOld.y) * 0.99;
+        particle.velocity[0] += (uNew.x - uOld.x) * 0.1;
+        particle.velocity[1] += (uNew.y - uOld.y) * 0.1;
         }
     }
 
