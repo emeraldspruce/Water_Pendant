@@ -266,7 +266,7 @@ class SIM
         bitsState step(float accelX, float accelY);
         void setParticlePosition(int index, float x, float y);
 
-    private:
+    protected:
         float dt = TIMESTEP;
         float accelInput[2];
         Grid grid;

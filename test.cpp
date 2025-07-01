@@ -1,5 +1,6 @@
 #include <fstream>
 #include "sim_FLIP.h"
+#include "unit_test.h"
 #include <cstdlib>
 #include <iostream>
 
@@ -163,24 +164,50 @@ Config_step getConfigUpdate()
 
 int main(int argc, char** argv)
     {
-    SIM sim;
-    sim.updateStepSize(TIMESTEP);
-    
-    bitsState state;
-    std::ofstream file("test_output.txt", std::ios::trunc);
-    while (true) 
+    std::cout << "\nChoose a test to run:"
+              << "\n1) Simulation"
+              << "\n2) Unit Test\n";
+    int choice;
+    std::cin >> choice;
+    switch (choice)
         {
-        Config_step config_step = getConfigUpdate();
-        if (config_step.stop)
+        case 1:
             {
-            std::cout << "Stopping simulation.\n";
+            std::cout << "Starting Simulation...\n";
+            SIM sim;
+            sim.updateStepSize(TIMESTEP);
+            
+            bitsState state;
+            std::ofstream file("test_output.txt", std::ios::trunc);
+            while (true) 
+                {
+                Config_step config_step = getConfigUpdate();
+                if (config_step.stop)
+                    {
+                    std::cout << "Stopping simulation.\n";
+                    break;
+                    }
+                state = sim.step(config_step.accelX, config_step.accelY);
+                file.seekp(0);
+                printState(file, state, -1);
+                file.flush();
+                }
+            file.close();
+            std::cout << "Simulation finished.\n";
             break;
             }
-        state = sim.step(config_step.accelX, config_step.accelY); // Add current velocity? (change from gravity to velocity because gravity is an acceleration)
-        file.seekp(0);
-        printState(file, state, -1);
-        file.flush();
+        case 2:
+            {
+            std::cout << "Starting Unit Tests...\n";
+            // Run unit tests
+            test_FLIP test;
+            test.test_InitWalls();
+            // Add more tests as needed
+            std::cout << "All tests passed!\n";
+            break;
+            }
+        default:
+            std::cerr << "Invalid choice. Exiting.\n";
         }
-    file.close();
-    std::cout << "Simulation finished.\n";
+    
     }
